@@ -28,7 +28,7 @@ variable "aks_subnet_id" {
   type        = string
 }
 
-variable "aks_subnet_cidr" {
+variable "aks_subnet_cidr" { # Цей CIDR буде використовуватися як source_addresses у правилах
   description = "The CIDR block for AKS subnet"
   type        = string
 }
@@ -38,12 +38,51 @@ variable "aks_loadbalancer_ip" {
   type        = string
 }
 
-variable "additional_app_rules" {
-  description = "Additional application rules for Azure Firewall"
-  type        = list(string)
-}
-
 variable "tags" {
   description = "A mapping of tags to assign to the resources"
   type        = map(string)
+}
+
+# Нові змінні для структур правил
+variable "application_rule_definitions" {
+  description = "A list of application rule definitions."
+  type = list(object({
+    name             = string
+    description      = optional(string)
+    source_addresses = list(string)
+    target_fqdns     = list(string)
+    protocols = list(object({
+      port = string
+      type = string
+    }))
+  }))
+  default = []
+}
+
+variable "network_rule_definitions" {
+  description = "A list of network rule definitions."
+  type = list(object({
+    name                  = string
+    description           = optional(string)
+    source_addresses      = list(string)
+    destination_ports     = list(string)
+    destination_addresses = list(string)
+    protocols             = list(string)
+  }))
+  default = []
+}
+
+variable "nat_rule_definitions" {
+  description = "A list of NAT rule definitions."
+  type = list(object({
+    name              = string
+    description       = optional(string)
+    source_addresses  = list(string)
+    destination_ports = list(string)
+    # destination_addresses не потрібен тут, він буде IP-адресою Firewall
+    translated_port    = string
+    translated_address = string
+    protocols          = list(string)
+  }))
+  default = []
 }

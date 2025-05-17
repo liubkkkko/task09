@@ -22,3 +22,9 @@ output "route_table_id" {
   description = "The ID of the route table"
   value       = azurerm_route_table.route_table.id
 }
+
+# Додано, якщо потрібно передавати CIDR підмережі Firewall назовні
+output "firewall_subnet_address_prefix" {
+  description = "The address prefix of the Azure Firewall subnet."
+  value       = azurerm_subnet.firewall_subnet.address_prefixes[0]
+}
