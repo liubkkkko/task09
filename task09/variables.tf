@@ -1,50 +1,78 @@
 variable "prefix" {
-  description = "Prefix for resource names."
+  description = "Prefix for all resources"
   type        = string
   default     = "cmtr-13f58f43-mod9"
 }
 
 variable "location" {
-  description = "Azure region for resources."
+  description = "The Azure Region in which all resources should be created"
   type        = string
   default     = "East US"
 }
 
-variable "existing_resource_group_name" {
-  description = "Name of the existing Azure Resource Group."
+variable "resource_group_name" {
+  description = "The name of the resource group"
   type        = string
   default     = "cmtr-13f58f43-mod9-rg"
 }
 
-variable "existing_vnet_name" {
-  description = "Name of the existing Azure Virtual Network."
+variable "virtual_network_name" {
+  description = "The name of the virtual network"
   type        = string
   default     = "cmtr-13f58f43-mod9-vnet"
 }
 
-variable "existing_aks_subnet_name" {
-  description = "Name of the existing AKS subnet."
+variable "vnet_address_space" {
+  description = "The address space of the virtual network"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "aks_subnet_name" {
+  description = "The name of the AKS subnet"
   type        = string
   default     = "aks-snet"
 }
 
-variable "aks_loadbalancer_ip" {
-  description = "Public IP address of the AKS load balancer for NGINX service."
+variable "aks_subnet_cidr" {
+  description = "The CIDR block for AKS subnet"
   type        = string
-  # This value must be provided in terraform.tfvars
+  default     = "10.0.0.0/24"
 }
 
-variable "firewall_subnet_address_prefix" {
-  description = "Address prefix for the Azure Firewall subnet. Must be at least /26."
+variable "firewall_subnet_cidr" {
+  description = "The CIDR block for Azure Firewall subnet"
   type        = string
-  default     = "10.0.1.0/26" # Example, ensure it doesn't overlap and is part of VNet space
+  default     = "10.0.1.0/24"
+}
+
+variable "aks_loadbalancer_ip" {
+  description = "Public IP of the AKS Loadbalancer"
+  type        = string
+}
+
+variable "additional_app_rules" {
+  description = "Additional application rules for Azure Firewall"
+  type        = list(string)
+  default = [
+    "*.github.com",
+    "*.githubusercontent.com",
+    "ghcr.io",
+    "*.azurecr.io",
+    "k8s.gcr.io",
+    "storage.googleapis.com",
+    "apt.kubernetes.io",
+    "kubernetes-charts.storage.googleapis.com",
+    "*.blob.core.windows.net",
+    "nginx.org"
+  ]
 }
 
 variable "tags" {
-  description = "A map of tags to assign to the resources."
+  description = "A mapping of tags to assign to the resources"
   type        = map(string)
   default = {
-    environment = "terraform-homework"
-    project     = "cmtr-mod9-firewall"
+    Environment = "Production"
+    Project     = "AKS-Firewall-Integration"
   }
 }

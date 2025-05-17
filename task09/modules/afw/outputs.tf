@@ -1,19 +1,24 @@
-output "firewall_public_ip_address" {
-  description = "The public IP address of the Azure Firewall."
+output "firewall_id" {
+  description = "The ID of the Azure Firewall"
+  value       = azurerm_firewall.firewall.id
+}
+
+output "firewall_name" {
+  description = "The name of the Azure Firewall"
+  value       = azurerm_firewall.firewall.name
+}
+
+output "firewall_private_ip" {
+  description = "The private IP of the Azure Firewall"
+  value       = azurerm_firewall.firewall.ip_configuration[0].private_ip_address
+}
+
+output "firewall_public_ip" {
+  description = "The public IP of the Azure Firewall"
   value       = azurerm_public_ip.firewall_pip.ip_address
 }
 
-output "firewall_private_ip_address" {
-  description = "The primary private IP address of the Azure Firewall."
-  value       = azurerm_firewall.afw.ip_configuration[0].private_ip_address
-}
-
-output "firewall_id" {
-  description = "The ID of the Azure Firewall."
-  value       = azurerm_firewall.afw.id
-}
-
 output "route_table_id" {
-  description = "The ID of the Route Table configured for AKS subnet."
-  value       = azurerm_route_table.rt.id
+  description = "The ID of the route table"
+  value       = azurerm_route_table.route_table.id
 }

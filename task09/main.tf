@@ -1,28 +1,39 @@
-data "azurerm_resource_group" "existing_rg" {
-  name = var.existing_resource_group_name
+provider "azurerm" {
+  features {}
 }
 
-data "azurerm_virtual_network" "existing_vnet" {
-  name                = var.existing_vnet_name
-  resource_group_name = data.azurerm_resource_group.existing_rg.name
+# Get existing resource group
+data "azurerm_resource_group" "rg" {
+  name = var.resource_group_name
 }
 
-data "azurerm_subnet" "existing_aks_snet" {
-  name                 = var.existing_aks_subnet_name
-  virtual_network_name = data.azurerm_virtual_network.existing_vnet.name
-  resource_group_name  = data.azurerm_resource_group.existing_rg.name
+# Get existing virtual network
+data "azurerm_virtual_network" "vnet" {
+  name                = var.virtual_network_name
+  resource_group_name = data.azurerm_resource_group.rg.name
 }
 
-module "azure_firewall" {
+# Get existing AKS subnet
+data "azurerm_subnet" "aks_subnet" {
+  name                 = var.aks_subnet_name
+  virtual_network_name = data.azurerm_virtual_network.vnet.name
+  resource_group_name  = data.azurerm_resource_group.rg.name
+}
+
+# Create Azure Firewall and related resources using the module
+module "afw" {
   source = "./modules/afw"
 
-  prefix                         = var.prefix
-  location                       = var.location
-  resource_group_name            = data.azurerm_resource_group.existing_rg.name
-  virtual_network_name           = data.azurerm_virtual_network.existing_vnet.name
-  aks_subnet_id                  = data.azurerm_subnet.existing_aks_snet.id
-  aks_subnet_address_prefixes    = data.azurerm_subnet.existing_aks_snet.address_prefixes
-  aks_loadbalancer_ip            = var.aks_loadbalancer_ip
-  firewall_subnet_address_prefix = var.firewall_subnet_address_prefix
-  tags                           = var.tags
+  prefix               = local.prefix
+  location             = var.location
+  resource_group_name  = data.azurerm_resource_group.rg.name
+  virtual_network_name = data.azurerm_virtual_network.vnet.name
+
+  firewall_subnet_cidr = var.firewall_subnet_cidr
+  aks_subnet_id        = data.azurerm_subnet.aks_subnet.id
+  aks_subnet_cidr      = var.aks_subnet_cidr
+  aks_loadbalancer_ip  = var.aks_loadbalancer_ip
+  additional_app_rules = var.additional_app_rules
+
+  tags = local.common_tags
 }
