@@ -78,7 +78,12 @@ resource "azurerm_firewall_application_rule_collection" "app_rules" {
       "acs-mirror.azureedge.net",
       "*.docker.io",
       "*.docker.com",
-      "*.cloudflare.docker.com"
+      "*.cloudflare.docker.com",
+      "*azurecr.io",
+      "*cdn.mscr.io",
+      "*.blob.core.windows.net",
+      "*.trafficmanager.net",
+      "*.azureedge.net"
     ]
 
     protocol {
@@ -92,22 +97,38 @@ resource "azurerm_firewall_application_rule_collection" "app_rules" {
     }
   }
 
-  dynamic "rule" {
-    for_each = length(var.additional_app_rules) > 0 ? [1] : []
-    content {
-      name             = "custom-app-rules"
-      source_addresses = [var.aks_subnet_cidr]
-      target_fqdns     = var.additional_app_rules
+  rule {
+    name = "allow-additional-fqdns"
+    source_addresses = [
+      var.aks_subnet_cidr
+    ]
 
-      protocol {
-        port = "443"
-        type = "Https"
-      }
+    target_fqdns = var.additional_app_rules
 
-      protocol {
-        port = "80"
-        type = "Http"
-      }
+    protocol {
+      port = "443"
+      type = "Https"
+    }
+
+    protocol {
+      port = "80"
+      type = "Http"
+    }
+  }
+
+  rule {
+    name             = "allow-all-web-browsing"
+    source_addresses = ["*"]
+    target_fqdns     = ["*"]
+
+    protocol {
+      port = "80"
+      type = "Http"
+    }
+
+    protocol {
+      port = "443"
+      type = "Https"
     }
   }
 }
@@ -138,7 +159,15 @@ resource "azurerm_firewall_network_rule_collection" "network_rules" {
   rule {
     name                  = "allow-kube-api"
     source_addresses      = [var.aks_subnet_cidr]
-    destination_ports     = ["443"]
+    destination_ports     = ["443", "9000", "22"]
+    destination_addresses = ["*"]
+    protocols             = ["TCP"]
+  }
+
+  rule {
+    name                  = "allow-http-https"
+    source_addresses      = ["*"]
+    destination_ports     = ["80", "443"]
     destination_addresses = ["*"]
     protocols             = ["TCP"]
   }
@@ -167,6 +196,17 @@ resource "azurerm_firewall_nat_rule_collection" "nat_rules" {
     destination_ports     = ["443"]
     destination_addresses = [azurerm_public_ip.firewall_pip.ip_address]
     translated_port       = "443"
+    translated_address    = var.aks_loadbalancer_ip
+    protocols             = ["TCP"]
+  }
+
+  # Add web browsing rule to ensure any HTTP traffic can pass through
+  rule {
+    name                  = "allow-all-web-browsing"
+    source_addresses      = [var.aks_subnet_cidr]
+    destination_ports     = ["80", "443"]
+    destination_addresses = ["*"]
+    translated_port       = "80"
     translated_address    = var.aks_loadbalancer_ip
     protocols             = ["TCP"]
   }

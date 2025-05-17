@@ -21,7 +21,6 @@ variable "virtual_network_name" {
 variable "firewall_subnet_cidr" {
   description = "The CIDR block for Azure Firewall subnet"
   type        = string
-  default     = "10.0.1.0/24" # Default value for Azure Firewall subnet
 }
 
 variable "aks_subnet_id" {
@@ -42,11 +41,9 @@ variable "aks_loadbalancer_ip" {
 variable "additional_app_rules" {
   description = "Additional application rules for Azure Firewall"
   type        = list(string)
-  default     = []
 }
 
 variable "tags" {
   description = "A mapping of tags to assign to the resources"
   type        = map(string)
-  default     = {}
 }
