@@ -1,4 +1,4 @@
-aks_loadbalancer_ip  = "9.169.67.163"
+aks_loadbalancer_ip  = "74.179.208.12"
 prefix               = "cmtr-13f58f43-mod9"
 location             = "East US"
 resource_group_name  = "cmtr-13f58f43-mod9-rg"
