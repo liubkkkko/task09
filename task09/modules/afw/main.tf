@@ -112,17 +112,14 @@ resource "azurerm_firewall_nat_rule_collection" "nat_rules" {
   dynamic "rule" {
     for_each = var.nat_rule_definitions
     content {
-      name              = rule.value.name
-      description       = rule.value.description
-      source_addresses  = rule.value.source_addresses
-      destination_ports = rule.value.destination_ports
-      # Destination is the Firewall's public IP
+      name                  = rule.value.name
+      description           = rule.value.description
+      source_addresses      = rule.value.source_addresses
+      destination_ports     = rule.value.destination_ports
       destination_addresses = [azurerm_public_ip.firewall_pip.ip_address]
-      # Reverted: Use the translated_address and translated_port from the input variable
-      # This should make the validator happy for check #15
-      translated_port    = rule.value.translated_port
-      translated_address = rule.value.translated_address # This is var.aks_loadbalancer_ip from root/locals.tf
-      protocols          = rule.value.protocols
+      translated_port       = rule.value.translated_port
+      translated_address    = rule.value.translated_address
+      protocols             = rule.value.protocols
     }
   }
 }

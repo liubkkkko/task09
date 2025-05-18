@@ -20,17 +20,17 @@ data "azurerm_subnet" "aks_subnet" {
 module "afw" {
   source = "./modules/afw"
 
-  prefix               = local.prefix # Використовуємо local.prefix
+  prefix               = local.prefix
   location             = var.location
   resource_group_name  = data.azurerm_resource_group.rg.name
   virtual_network_name = data.azurerm_virtual_network.vnet.name
   firewall_subnet_cidr = var.firewall_subnet_cidr
   aks_subnet_id        = data.azurerm_subnet.aks_subnet.id
-  aks_subnet_cidr      = data.azurerm_subnet.aks_subnet.address_prefixes[0] # Отримуємо CIDR з data source
+  aks_subnet_cidr      = data.azurerm_subnet.aks_subnet.address_prefixes[0]
   aks_loadbalancer_ip  = var.aks_loadbalancer_ip
-  tags                 = local.common_tags # Використовуємо local.common_tags
+  tags                 = local.common_tags
 
-  # Передаємо структури правил
+  # Pass rule definitions from locals
   application_rule_definitions = local.application_rule_definitions
   network_rule_definitions     = local.network_rule_definitions
   nat_rule_definitions         = local.nat_rule_definitions

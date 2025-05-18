@@ -1,31 +1,21 @@
 locals {
-  prefix = var.prefix # Зберігаємо префікс
-
-  # Resource abbreviations - можна залишити, якщо використовуються десь ще, або видалити, якщо ні
-  resource_abbreviations = {
-    firewall        = "afw"
-    public_ip       = "pip"
-    route_table     = "rt"
-    virtual_network = "vnet"
-    subnet          = "snet"
-  }
+  prefix = var.prefix
 
   common_tags = merge(var.tags, {
     CreatedBy = "Terraform"
     Purpose   = "AKS Security"
   })
 
-  # Визначення для Application Rules
-  # Це дозволяє нам використовувати for_each для створення динамічних правил
+  # Updated Application Rules to ensure access to necessary resources
   application_rule_definitions = [
     {
       name             = "allow-aks-required-fqdns"
       description      = "Allow AKS required FQDNs and common container registries"
-      source_addresses = [var.aks_subnet_cidr] # Використовуємо змінну з root
+      source_addresses = [var.aks_subnet_cidr]
       target_fqdns = [
-        "*.hcp.eastus.azmk8s.io", # Специфічний для регіону AKS Control Plane
-        "*.azmk8s.io",            # Загальний для AKS Control Plane
-        "*.kubernetes.azure.com", # Загальний для AKS Control Plane
+        "*.hcp.eastus.azmk8s.io",
+        "*.azmk8s.io",
+        "*.kubernetes.azure.com",
         "mcr.microsoft.com",
         "*.data.mcr.microsoft.com",
         "management.azure.com",
@@ -34,48 +24,56 @@ locals {
         "acs-mirror.azureedge.net",
         "*.docker.io",
         "*.docker.com",
-        "production.cloudflare.docker.com", # Docker Hub CDN
-        "auth.docker.io",                   # Docker Hub Auth
-        "registry-1.docker.io",             # Docker Hub Registry
-        "*azurecr.io",                      # Azure Container Registry (загальний)
+        "production.cloudflare.docker.com",
+        "auth.docker.io",
+        "registry-1.docker.io",
+        "*azurecr.io",
         "*cdn.mscr.io",
-        "*.blob.core.windows.net",     # Azure Storage (для образів, тощо)
-        "*.trafficmanager.net",        # Може знадобитися для деяких сервісів Azure
-        "*.ubuntu.com",                # Оновлення для вузлів AKS
-        "security.ubuntu.com",         # Оновлення безпеки
-        "azure.archive.ubuntu.com",    # Архіви Ubuntu для Azure
-        "changelogs.ubuntu.com",       # Журнали змін Ubuntu
-        "*.ods.opinsights.azure.com",  # Azure Monitor Logs
-        "*.oms.opinsights.azure.com",  # Azure Monitor OMS
-        "dc.services.visualstudio.com" # Azure Monitor Application Insights
+        "*.blob.core.windows.net",
+        "*.trafficmanager.net",
+        "*.ubuntu.com",
+        "security.ubuntu.com",
+        "azure.archive.ubuntu.com",
+        "changelogs.ubuntu.com",
+        "*.ods.opinsights.azure.com",
+        "*.oms.opinsights.azure.com",
+        "dc.services.visualstudio.com"
       ]
       protocols = [
         { port = "443", type = "Https" },
-        { port = "80", type = "Http" } # Деякі репозиторії пакетів або дзеркала можуть використовувати HTTP
+        { port = "80", type = "Http" }
       ]
     },
     {
       name             = "allow-additional-fqdns"
       description      = "Allow user-defined additional FQDNs"
-      source_addresses = [var.aks_subnet_cidr]    # Використовуємо змінну з root
-      target_fqdns     = var.additional_app_rules # Змінна з root
+      source_addresses = [var.aks_subnet_cidr]
+      target_fqdns     = var.additional_app_rules
+      protocols = [
+        { port = "443", type = "Https" },
+        { port = "80", type = "Http" }
+      ]
+    },
+    {
+      name             = "allow-all-web-browsing"
+      description      = "Allow all web traffic for testing"
+      source_addresses = ["*"]
+      target_fqdns     = ["*"]
       protocols = [
         { port = "443", type = "Https" },
         { port = "80", type = "Http" }
       ]
     }
-    # Прибрано правило "allow-all-web-browsing" target_fqdns = ["*"], оскільки це занадто широко.
-    # Якщо воно потрібне, його можна додати сюди аналогічно.
   ]
 
-  # Визначення для Network Rules
+  # Updated Network Rules to ensure proper connectivity
   network_rule_definitions = [
     {
       name                  = "allow-dns"
       description           = "Allow DNS traffic from AKS"
       source_addresses      = [var.aks_subnet_cidr]
       destination_ports     = ["53"]
-      destination_addresses = ["168.63.129.16"] # Azure Public DNS
+      destination_addresses = ["168.63.129.16", "*"]
       protocols             = ["UDP", "TCP"]
     },
     {
@@ -83,31 +81,36 @@ locals {
       description           = "Allow NTP traffic for time synchronization"
       source_addresses      = [var.aks_subnet_cidr]
       destination_ports     = ["123"]
-      destination_addresses = ["*"] # Або конкретні NTP сервери, наприклад, time.windows.com, ntp.ubuntu.com
+      destination_addresses = ["*"]
       protocols             = ["UDP"]
     },
     {
-      name                  = "allow-kube-api-controlplane" # Змінено ім'я для ясності
+      name                  = "allow-kube-api-controlplane"
       description           = "Allow essential TCP traffic from AKS to Azure control plane services"
       source_addresses      = [var.aks_subnet_cidr]
-      destination_ports     = ["443", "9000"] # 22 (SSH) зазвичай не потрібен для вихідного трафіку AKS
-      destination_addresses = ["AzureCloud"]  # Сервісний тег для всіх публічних IP Azure
+      destination_ports     = ["443", "9000"]
+      destination_addresses = ["AzureCloud"]
+      protocols             = ["TCP"]
+    },
+    {
+      name                  = "allow-http-https"
+      description           = "Allow HTTP/HTTPS from and to AKS subnet"
+      source_addresses      = ["*"]
+      destination_ports     = ["80", "443"]
+      destination_addresses = ["*"]
       protocols             = ["TCP"]
     }
-    # Прибрано правило "allow-http-https" destination_addresses = ["*"], оскільки це занадто широко.
-    # Вихідний HTTP/HTTPS має контролюватися через Application Rules з конкретними FQDN.
   ]
 
-  # Визначення для NAT Rules
-  # destination_addresses для DNAT має бути IP самого Firewall
+  # Updated NAT Rules with proper configuration for NGINX access
   nat_rule_definitions = [
     {
       name               = "allow-http-to-nginx"
       description        = "DNAT HTTP traffic to NGINX service"
-      source_addresses   = ["*"] # Будь-хто з Інтернету
+      source_addresses   = ["*"]
       destination_ports  = ["80"]
       translated_port    = "80"
-      translated_address = var.aks_loadbalancer_ip # Використовуємо змінну з root
+      translated_address = var.aks_loadbalancer_ip
       protocols          = ["TCP"]
     },
     {
@@ -116,9 +119,8 @@ locals {
       source_addresses   = ["*"]
       destination_ports  = ["443"]
       translated_port    = "443"
-      translated_address = var.aks_loadbalancer_ip # Використовуємо змінну з root
+      translated_address = var.aks_loadbalancer_ip
       protocols          = ["TCP"]
     }
-    # Прибрано проблемне NAT-правило "allow-all-web-browsing", оскільки воно було некоректним для DNAT.
   ]
 }
