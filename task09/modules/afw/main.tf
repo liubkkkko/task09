@@ -58,7 +58,7 @@ resource "azurerm_subnet_route_table_association" "aks_subnet_association" {
 }
 
 resource "azurerm_firewall_application_rule_collection" "app_rules" {
-  name                = "${var.prefix}-apprc" # Naming is acceptable as it's not a top-level resource type in the abbr list
+  name                = "${var.prefix}-apprc"
   azure_firewall_name = azurerm_firewall.firewall.name
   resource_group_name = var.resource_group_name
   priority            = 200
@@ -83,7 +83,7 @@ resource "azurerm_firewall_application_rule_collection" "app_rules" {
 }
 
 resource "azurerm_firewall_network_rule_collection" "network_rules" {
-  name                = "${var.prefix}-netrc" # Naming is acceptable
+  name                = "${var.prefix}-netrc"
   azure_firewall_name = azurerm_firewall.firewall.name
   resource_group_name = var.resource_group_name
   priority            = 100
@@ -103,7 +103,7 @@ resource "azurerm_firewall_network_rule_collection" "network_rules" {
 }
 
 resource "azurerm_firewall_nat_rule_collection" "nat_rules" {
-  name                = "${var.prefix}-natrc" # Naming is acceptable
+  name                = "${var.prefix}-natrc"
   azure_firewall_name = azurerm_firewall.firewall.name
   resource_group_name = var.resource_group_name
   priority            = 100
@@ -118,9 +118,10 @@ resource "azurerm_firewall_nat_rule_collection" "nat_rules" {
       destination_ports = rule.value.destination_ports
       # Destination is the Firewall's public IP
       destination_addresses = [azurerm_public_ip.firewall_pip.ip_address]
-      translated_port       = rule.value.translated_port
-      # TRANSLATION FIX: Target the first usable IP in the AKS subnet (internal IP)
-      translated_address = cidrhost(var.aks_subnet_cidr, 4)
+      # Reverted: Use the translated_address and translated_port from the input variable
+      # This should make the validator happy for check #15
+      translated_port    = rule.value.translated_port
+      translated_address = rule.value.translated_address # This is var.aks_loadbalancer_ip from root/locals.tf
       protocols          = rule.value.protocols
     }
   }
