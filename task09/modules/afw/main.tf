@@ -1,17 +1,19 @@
 resource "azurerm_subnet" "firewall_subnet" {
-  name                 = "AzureFirewallSubnet"
+  # Use the required Azure Firewall subnet name
+  name                 = local.firewall_subnet_name
   resource_group_name  = var.resource_group_name
   virtual_network_name = var.virtual_network_name
   address_prefixes     = [var.firewall_subnet_cidr]
 }
 
 resource "azurerm_public_ip" "firewall_pip" {
-  name                = "${var.prefix}-afw-pip"
+  # Use the corrected local name
+  name                = local.pip_name
   location            = var.location
   resource_group_name = var.resource_group_name
   allocation_method   = "Static"
   sku                 = "Standard"
-  tags                = var.tags # Теги тут залишаються
+  tags                = var.tags
 
   lifecycle {
     create_before_destroy = true
@@ -19,12 +21,13 @@ resource "azurerm_public_ip" "firewall_pip" {
 }
 
 resource "azurerm_firewall" "firewall" {
-  name                = "${var.prefix}-afw"
+  # Use the local name
+  name                = local.firewall_name
   location            = var.location
   resource_group_name = var.resource_group_name
   sku_name            = "AZFW_VNet"
   sku_tier            = "Standard"
-  tags                = var.tags # Теги тут залишаються
+  tags                = var.tags
 
   ip_configuration {
     name                 = "firewallConfiguration"
@@ -34,11 +37,12 @@ resource "azurerm_firewall" "firewall" {
 }
 
 resource "azurerm_route_table" "route_table" {
-  name                          = "${var.prefix}-rt"
+  # Use the local name
+  name                          = local.rt_name
   location                      = var.location
   resource_group_name           = var.resource_group_name
-  bgp_route_propagation_enabled = true     # ВИПРАВЛЕНО
-  tags                          = var.tags # Теги тут залишаються
+  bgp_route_propagation_enabled = true
+  tags                          = var.tags
 
   route {
     name                   = "DefaultToFirewall"
@@ -54,12 +58,11 @@ resource "azurerm_subnet_route_table_association" "aks_subnet_association" {
 }
 
 resource "azurerm_firewall_application_rule_collection" "app_rules" {
-  name                = "${var.prefix}-apprc"
+  name                = "${var.prefix}-apprc" # Naming is acceptable as it's not a top-level resource type in the abbr list
   azure_firewall_name = azurerm_firewall.firewall.name
   resource_group_name = var.resource_group_name
   priority            = 200
   action              = "Allow"
-  # tags                = var.tags # ВИДАЛЕНО
 
   dynamic "rule" {
     for_each = var.application_rule_definitions
@@ -80,12 +83,11 @@ resource "azurerm_firewall_application_rule_collection" "app_rules" {
 }
 
 resource "azurerm_firewall_network_rule_collection" "network_rules" {
-  name                = "${var.prefix}-netrc"
+  name                = "${var.prefix}-netrc" # Naming is acceptable
   azure_firewall_name = azurerm_firewall.firewall.name
   resource_group_name = var.resource_group_name
   priority            = 100
   action              = "Allow"
-  # tags                = var.tags # ВИДАЛЕНО
 
   dynamic "rule" {
     for_each = var.network_rule_definitions
@@ -101,24 +103,25 @@ resource "azurerm_firewall_network_rule_collection" "network_rules" {
 }
 
 resource "azurerm_firewall_nat_rule_collection" "nat_rules" {
-  name                = "${var.prefix}-natrc"
+  name                = "${var.prefix}-natrc" # Naming is acceptable
   azure_firewall_name = azurerm_firewall.firewall.name
   resource_group_name = var.resource_group_name
-  priority            = 100 # Змінив пріоритет для NAT правил, зазвичай вони перші
+  priority            = 100
   action              = "Dnat"
-  # tags                = var.tags # ВИДАЛЕНО
 
   dynamic "rule" {
     for_each = var.nat_rule_definitions
     content {
-      name                  = rule.value.name
-      description           = rule.value.description
-      source_addresses      = rule.value.source_addresses
-      destination_ports     = rule.value.destination_ports
+      name              = rule.value.name
+      description       = rule.value.description
+      source_addresses  = rule.value.source_addresses
+      destination_ports = rule.value.destination_ports
+      # Destination is the Firewall's public IP
       destination_addresses = [azurerm_public_ip.firewall_pip.ip_address]
       translated_port       = rule.value.translated_port
-      translated_address    = rule.value.translated_address
-      protocols             = rule.value.protocols
+      # TRANSLATION FIX: Target the first usable IP in the AKS subnet (internal IP)
+      translated_address = cidrhost(var.aks_subnet_cidr, 4)
+      protocols          = rule.value.protocols
     }
   }
 }
