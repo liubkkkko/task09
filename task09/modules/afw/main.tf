@@ -50,6 +50,11 @@ resource "azurerm_route_table" "route_table" {
     next_hop_type          = "VirtualAppliance"
     next_hop_in_ip_address = azurerm_firewall.firewall.ip_configuration[0].private_ip_address
   }
+  route {
+    name           = "RouteFirewallPublicIPToInternet"
+    address_prefix = "${azurerm_public_ip.firewall_pip.ip_address}/32" // Маршрут для публічної IP Firewall
+    next_hop_type  = "Internet"                                        // З наступним переходом в Інтернет
+  }
 }
 
 resource "azurerm_subnet_route_table_association" "aks_subnet_association" {
