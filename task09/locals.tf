@@ -6,7 +6,6 @@ locals {
     Purpose   = "AKS Security"
   })
 
-  # Updated Application Rules to ensure access to necessary resources
   application_rule_definitions = [
     {
       name             = "allow-aks-required-fqdns"
@@ -21,7 +20,8 @@ locals {
         "management.azure.com",
         "login.microsoftonline.com",
         "packages.microsoft.com",
-        "acs-mirror.azureedge.net",
+        "acs-mirror.azureedge.net", # Може бути замінено на packages.aks.azure.com
+        # "packages.aks.azure.com", # Новіший ендпоінт
         "*.docker.io",
         "*.docker.com",
         "production.cloudflare.docker.com",
@@ -31,49 +31,39 @@ locals {
         "*cdn.mscr.io",
         "*.blob.core.windows.net",
         "*.trafficmanager.net",
-        "*.ubuntu.com",
+        "*.ubuntu.com", # Для оновлень ОС вузлів
         "security.ubuntu.com",
         "azure.archive.ubuntu.com",
         "changelogs.ubuntu.com",
-        "*.ods.opinsights.azure.com",
-        "*.oms.opinsights.azure.com",
-        "dc.services.visualstudio.com"
+        "*.ods.opinsights.azure.com", # Для Azure Monitor
+        "*.oms.opinsights.azure.com", # Для Azure Monitor
+        "dc.services.visualstudio.com"  # Для Azure Monitor
       ]
       protocols = [
         { port = "443", type = "Https" },
-        { port = "80", type = "Http" }
+        { port = "80", type = "Http" } # Для деяких репозиторіїв пакетів
       ]
     },
     {
       name             = "allow-additional-fqdns"
       description      = "Allow user-defined additional FQDNs"
       source_addresses = [var.aks_subnet_cidr]
-      target_fqdns     = var.additional_app_rules
-      protocols = [
-        { port = "443", type = "Https" },
-        { port = "80", type = "Http" }
-      ]
-    },
-    {
-      name             = "allow-all-web-browsing"
-      description      = "Allow all web traffic for testing"
-      source_addresses = ["*"]
-      target_fqdns     = ["*"]
+      target_fqdns     = var.additional_app_rules # nginx.org та інші з terraform.tfvars
       protocols = [
         { port = "443", type = "Https" },
         { port = "80", type = "Http" }
       ]
     }
+    # Прибрано правило "allow-all-web-browsing", якщо не є строго необхідним для тесту
   ]
 
-  # Updated Network Rules to ensure proper connectivity
   network_rule_definitions = [
     {
       name                  = "allow-dns"
-      description           = "Allow DNS traffic from AKS"
+      description           = "Allow DNS traffic from AKS to Azure DNS"
       source_addresses      = [var.aks_subnet_cidr]
       destination_ports     = ["53"]
-      destination_addresses = ["168.63.129.16", "*"]
+      destination_addresses = ["168.63.129.16"] # Azure Public DNS
       protocols             = ["UDP", "TCP"]
     },
     {
@@ -81,28 +71,30 @@ locals {
       description           = "Allow NTP traffic for time synchronization"
       source_addresses      = [var.aks_subnet_cidr]
       destination_ports     = ["123"]
-      destination_addresses = ["*"]
+      # ntp.ubuntu.com є FQDN, краще його в Application Rule або використати * для Network Rule, якщо це припустимо
+      destination_addresses = ["*"] # Або конкретні NTP IP, якщо відомі, або ntp.ubuntu.com в AppRule
       protocols             = ["UDP"]
     },
     {
-      name                  = "allow-kube-api-controlplane"
+      name                  = "allow-aks-controlplane-communication" # Більш специфічна назва
       description           = "Allow essential TCP traffic from AKS to Azure control plane services"
       source_addresses      = [var.aks_subnet_cidr]
-      destination_ports     = ["443", "9000"]
-      destination_addresses = ["AzureCloud"]
-      protocols             = ["TCP"]
+      destination_ports     = ["443", "9000", "1194"] # Додано 1194 UDP, хоча це UDP, TCP для 443/9000
+      destination_addresses = ["AzureCloud"]          # Сервісний тег для всіх публічних IP Azure
+      protocols             = ["TCP"]                 # Для 443, 9000
     },
+    # Додаткове правило для UDP 1194, якщо потрібно
     {
-      name                  = "allow-http-https"
-      description           = "Allow HTTP/HTTPS from and to AKS subnet"
-      source_addresses      = ["*"]
-      destination_ports     = ["80", "443"]
-      destination_addresses = ["*"]
-      protocols             = ["TCP"]
+      name                  = "allow-aks-controlplane-udp"
+      description           = "Allow essential UDP traffic from AKS to Azure control plane services"
+      source_addresses      = [var.aks_subnet_cidr]
+      destination_ports     = ["1194"]
+      destination_addresses = ["AzureCloud"]
+      protocols             = ["UDP"]
     }
+    # Прибрано правило "allow-http-https" з destination_addresses = ["*"]
   ]
 
-  # Updated NAT Rules with proper configuration for NGINX access
   nat_rule_definitions = [
     {
       name               = "allow-http-to-nginx"
