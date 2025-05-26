@@ -35,9 +35,9 @@ locals {
         "security.ubuntu.com",
         "azure.archive.ubuntu.com",
         "changelogs.ubuntu.com",
-        "*.ods.opinsights.azure.com", # Для Azure Monitor
-        "*.oms.opinsights.azure.com", # Для Azure Monitor
-        "dc.services.visualstudio.com"  # Для Azure Monitor
+        "*.ods.opinsights.azure.com",  # Для Azure Monitor
+        "*.oms.opinsights.azure.com",  # Для Azure Monitor
+        "dc.services.visualstudio.com" # Для Azure Monitor
       ]
       protocols = [
         { port = "443", type = "Https" },
@@ -67,10 +67,10 @@ locals {
       protocols             = ["UDP", "TCP"]
     },
     {
-      name                  = "allow-ntp"
-      description           = "Allow NTP traffic for time synchronization"
-      source_addresses      = [var.aks_subnet_cidr]
-      destination_ports     = ["123"]
+      name              = "allow-ntp"
+      description       = "Allow NTP traffic for time synchronization"
+      source_addresses  = [var.aks_subnet_cidr]
+      destination_ports = ["123"]
       # ntp.ubuntu.com є FQDN, краще його в Application Rule або використати * для Network Rule, якщо це припустимо
       destination_addresses = ["*"] # Або конкретні NTP IP, якщо відомі, або ntp.ubuntu.com в AppRule
       protocols             = ["UDP"]
